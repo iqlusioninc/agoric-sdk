@@ -1,5 +1,6 @@
 import test from 'ava';
 
+import { PATTERN } from '@agoric/same-structure';
 import { makeAmountMath, MathKind } from '../../../src';
 
 // The "unit tests" for MathHelpers actually make the calls through
@@ -18,12 +19,18 @@ test('natMathHelpers', t => {
     getBrand,
     getAmountMathKind,
     make,
+    makePattern,
+    makeStarPattern,
+    makeOpPattern,
     coerce,
+    // coercePattern, TODO
     getValue,
+    // getValuePattern, TODO
     getEmpty,
     isEmpty,
     isGTE,
     isEqual,
+    matches,
     add,
     subtract,
   } = amountMath;
@@ -46,6 +53,24 @@ test('natMathHelpers', t => {
     { instanceOf: RangeError, message: 'negative' },
     `- 1 is not a valid Nat`,
   );
+
+  // makePattern
+  t.deepEqual(makePattern(harden({ [PATTERN]: '*' })), {
+    brand: mockBrand,
+    value: { [PATTERN]: '*' },
+  });
+
+  // makeStarPattern
+  t.deepEqual(makeStarPattern(), {
+    brand: mockBrand,
+    value: { [PATTERN]: '*' },
+  });
+
+  // makeOpPattern
+  t.deepEqual(makeOpPattern(3, '<='), {
+    brand: mockBrand,
+    value: { [PATTERN]: '<=', limit: 3 },
+  });
 
   // coerce
   t.deepEqual(
@@ -108,6 +133,11 @@ test('natMathHelpers', t => {
   // isEqual
   t.assert(isEqual(make(4), make(4)), `4 equals 4`);
   t.falsy(isEqual(make(4), make(5)), `4 does not equal 5`);
+
+  // matches
+  t.assert(matches(makeStarPattern(), make(4)), `star matches 4`);
+  t.assert(matches(makeOpPattern(3, '<='), make(4)), `3 <= 4`);
+  t.falsy(matches(makeOpPattern(3, '>='), make(4)), `3 not >= 4`);
 
   // add
   t.deepEqual(add(make(5), make(9)), make(14), `5 + 9 = 14`);

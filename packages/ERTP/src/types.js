@@ -37,6 +37,19 @@
  */
 
 /**
+ * @typedef {Amount | any} AmountPattern
+ * TODO explain
+ *
+ * @property {Brand} brand
+ * @property {ValuePattern} value
+ */
+
+/**
+ * @typedef {Value | any} ValuePattern
+ * TODO explain
+ */
+
+/**
  * @typedef {'nat' | 'set' | 'strSet'} AmountMathKind
  */
 
@@ -57,11 +70,26 @@
  * @property {(allegedValue: Value) => Amount} make
  * Make an amount from a value by adding the brand.
  *
+ * @property {(valuePattern: ValuePattern) => AmountPattern} makePattern
+ * TODO explain
+ *
+ * @property {() => AmountPattern} makeStarPattern
+ * TODO explain
+ *
+ * @property {(allegedLimit: Value, op: string) => AmountPattern} makeOpPattern
+ * TODO explain. TODO do the enum typing thing on op.
+ *
  * @property {(allegedAmount: Amount) => Amount} coerce
  * Make sure this amount is valid and return it if so.
  *
+ * @property {(allegedAmountPattern: AmountPattern) => AmountPattern} coercePattern
+ * TODO explain
+ *
  * @property {(amount: Amount) => Value} getValue
  * Extract and return the value.
+ *
+ * @property {(amountPattern: AmountPattern) => ValuePattern} getValuePattern
+ * TODO explain
  *
  * @property {() => Amount} getEmpty
  * Return the amount representing an empty amount. This is the
@@ -80,6 +108,9 @@
  * @property {(leftAmount: Amount, rightAmount: Amount) => boolean} isEqual
  * Returns true if the leftAmount equals the rightAmount. We assume
  * that if isGTE is true in both directions, isEqual is also true
+ *
+ * @property {(amountPattern: AmountPattern, amountSpecimen: Amount) => boolean} matches
+ * TODO explain
  *
  * @property {(leftAmount: Amount, rightAmount: Amount) => Amount} add
  * Returns a new amount that is the union of both leftAmount and rightAmount.

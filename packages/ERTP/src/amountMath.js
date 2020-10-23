@@ -1,8 +1,13 @@
 // @ts-check
 
-import { assert, details } from '@agoric/assert';
+import { assert, details as d, q } from '@agoric/assert';
 
-import { mustBeComparable } from '@agoric/same-structure';
+import {
+  mustBeComparable,
+  patternKindOf,
+  match,
+  PATTERN,
+} from '@agoric/same-structure';
 
 import './types';
 import natMathHelpers from './mathHelpers/natMathHelpers';
@@ -87,7 +92,7 @@ function makeAmountMath(brand, amountMathKind) {
   const helpers = mathHelpers[amountMathKind];
   assert(
     helpers !== undefined,
-    details`unrecognized amountMathKind: ${amountMathKind}`,
+    d`unrecognized amountMathKind: ${amountMathKind}`,
   );
 
   // Cache the amount if we can.
@@ -112,6 +117,49 @@ function makeAmountMath(brand, amountMathKind) {
     },
 
     /**
+     * TODO explain.
+     *
+     * @param {ValuePattern} valuePattern
+     * @returns {AmountPattern}
+     */
+    makePattern: valuePattern => {
+      mustBeComparable(valuePattern);
+      const patternKind = patternKindOf(valuePattern);
+      if (patternKind === undefined) {
+        return amountMath.make(valuePattern);
+      }
+      return harden({ brand, value: valuePattern });
+    },
+
+    /**
+     * TODO explain.
+     *
+     * @returns {AmountPattern}
+     */
+    makeStarPattern: () => {
+      return amountMath.makePattern(harden({ [PATTERN]: '*' }));
+    },
+
+    /**
+     * TODO explain.
+     *
+     * @param {Value} allegedLimit
+     * @param {string} op TODO do the enum tying thing
+     * @returns {AmountPattern}
+     */
+    makeOpPattern: (allegedLimit, op) => {
+      assert(
+        ['<', '<=', '==', '>=', '>'].includes(op),
+        d`unrecognized limit operator ${q(op)}`,
+      );
+      const valuePattern = harden({
+        [PATTERN]: op,
+        limit: helpers.doCoerce(allegedLimit),
+      });
+      return amountMath.makePattern(valuePattern);
+    },
+
+    /**
      * Make sure this amount is valid and return it if so, throwing if invalid.
      *
      * @param {Amount} allegedAmount
@@ -126,18 +174,42 @@ function makeAmountMath(brand, amountMathKind) {
       const { brand: allegedBrand, value } = allegedAmount;
       assert(
         allegedBrand !== undefined,
-        details`alleged brand is undefined. Did you pass a value rather than an amount?`,
+        d`alleged brand is undefined. Did you pass a value rather than an amount?`,
       );
       assert(
         brand === allegedBrand,
-        details`the brand in the allegedAmount in 'coerce' didn't match the amountMath brand`,
+        d`the brand in the allegedAmount in 'coerce' didn't match the amountMath brand`,
       );
       // Will throw on inappropriate value
       return amountMath.make(value);
     },
 
+    /**
+     * TODO explain.
+     *
+     * @param {AmountPattern} allegedAmountPattern
+     * @returns {AmountPattern} or throws if invalid
+     */
+    coercePattern: allegedAmountPattern => {
+      const { brand: allegedBrand, value: valuePattern } = allegedAmountPattern;
+      assert(
+        allegedBrand !== undefined,
+        d`alleged brand is undefined. Did you pass a value rather than an amount?`,
+      );
+      assert(
+        brand === allegedBrand,
+        d`the brand in the allegedAmount in 'coerce' didn't match the amountMath brand`,
+      );
+      // Will throw on inappropriate value
+      return amountMath.makePattern(valuePattern);
+    },
+
     // Get the value from the amount.
     getValue: amount => amountMath.coerce(amount).value,
+
+    // TODO explain.
+    getValuePattern: amountPattern =>
+      amountMath.coercePattern(amountPattern).value,
 
     // Represents the empty set/mathematical identity.
     // eslint-disable-next-line no-use-before-define
@@ -161,6 +233,50 @@ function makeAmountMath(brand, amountMathKind) {
         amountMath.getValue(leftAmount),
         amountMath.getValue(rightAmount),
       ),
+
+    matches: (amountPattern, amountSpecimen) => {
+      const pattern = amountMath.getValuePattern(amountPattern);
+      const specimen = amountMath.getValue(amountSpecimen);
+      const patternKind = patternKindOf(pattern);
+      switch (patternKind) {
+        case undefined:
+        case '*':
+        case 'bind': {
+          // Even for the `undefined` case, we do not use `amountMath.isEqual`
+          // here because the `pattern` may still have embedded generic
+          // patterns. However (TODO), using`match` isn't quite right either,
+          // since it will do an exact `sameStructure` - like compare until it
+          // reaches these embedded patterns. We need something that does a
+          // `helpers.doIsEqual`-like compare until it reaches these embedded
+          // patterns.
+          return match(pattern, specimen) !== undefined;
+        }
+        case '<': {
+          return (
+            (helpers.doIsGTE(specimen, pattern.limit) &&
+            !helpers.doIsEqual(specimen, pattern.limit))
+          );
+        }
+        case '<=': {
+          return helpers.doIsGTE(specimen, pattern.limit);
+        }
+        case '==': {
+          return helpers.doIsEqual(pattern.limit, specimen);
+        }
+        case '>=': {
+          return helpers.doIsGTE(pattern.limit, specimen);
+        }
+        case '>': {
+          return (
+            (helpers.doIsGTE(pattern.limit, specimen) &&
+            !helpers.doIsEqual(pattern.limit, specimen))
+          );
+        }
+        default: {
+          throw assert.fail(d`unrecognized pattern kind ${q(patternKind)}`);
+        }
+      }
+    },
 
     // Combine leftAmount and rightAmount.
     add: (leftAmount, rightAmount) =>

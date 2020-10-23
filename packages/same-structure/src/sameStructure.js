@@ -1,5 +1,7 @@
 /* global harden */
 
+// @ts-check
+
 import { sameValueZero, passStyleOf, REMOTE_STYLE } from '@agoric/marshal';
 import { assert, details, q } from '@agoric/assert';
 
@@ -56,7 +58,6 @@ function allComparable(passable) {
     case 'string':
     case 'boolean':
     case 'number':
-    case 'symbol':
     case 'bigint':
     case REMOTE_STYLE:
     case 'copyError': {
@@ -112,7 +113,6 @@ function sameStructure(left, right) {
     case 'string':
     case 'boolean':
     case 'number':
-    case 'symbol':
     case 'bigint':
     case REMOTE_STYLE: {
       return sameValueZero(left, right);
@@ -191,7 +191,6 @@ function mustBeSameStructureInternal(left, right, message, path) {
     case 'string':
     case 'boolean':
     case 'number':
-    case 'symbol':
     case 'bigint':
     case REMOTE_STYLE: {
       if (!sameValueZero(left, right)) {
