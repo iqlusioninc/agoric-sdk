@@ -16,6 +16,8 @@ import { sameStructure } from './sameStructure';
  */
 const PATTERN = '@pattern';
 
+const STAR_PATTERN = harden({ [PATTERN]: '*' });
+
 const patternKindOf = pattern => {
   const patternStyle = passStyleOf(pattern);
   if (patternStyle === 'copyRecord' && PATTERN in pattern) {
@@ -117,4 +119,4 @@ function match(outerPattern, outerSpecimen) {
 }
 harden(match);
 
-export { PATTERN, patternKindOf, match };
+export { PATTERN, STAR_PATTERN, patternKindOf, match };

@@ -7,6 +7,7 @@ import {
   patternKindOf,
   match,
   PATTERN,
+  STAR_PATTERN,
 } from '@agoric/same-structure';
 
 import './types';
@@ -137,7 +138,7 @@ function makeAmountMath(brand, amountMathKind) {
      * @returns {AmountPattern}
      */
     makeStarPattern: () => {
-      return amountMath.makePattern(harden({ [PATTERN]: '*' }));
+      return amountMath.makePattern(STAR_PATTERN);
     },
 
     /**
