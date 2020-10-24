@@ -207,11 +207,11 @@ export const swap = (
       zcf,
       {
         seat: leftSeat,
-        gains: leftSeat.getProposal().want,
+        gains: leftSeat.getProposal().want, // TODO
       },
       {
         seat: rightSeat,
-        gains: rightSeat.getProposal().want,
+        gains: rightSeat.getProposal().want, // TODO
       },
       leftHasExitedMsg,
       rightHasExitedMsg,
@@ -246,12 +246,12 @@ export const swapExact = (
       zcf,
       {
         seat: leftSeat,
-        gains: leftSeat.getProposal().want,
+        gains: leftSeat.getProposal().want, // TODO
         losses: leftSeat.getProposal().give,
       },
       {
         seat: rightSeat,
-        gains: rightSeat.getProposal().want,
+        gains: rightSeat.getProposal().want, // TODO
         losses: rightSeat.getProposal().give,
       },
       leftHasExitedMsg,
