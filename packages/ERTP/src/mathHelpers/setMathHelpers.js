@@ -118,6 +118,10 @@ const setMathHelpers = harden({
       const subPattern = pattern[0];
       for (const [i, elem] of entries(specimen)) {
         if (match(subPattern, elem)) {
+          // This just takes the first match, which is rather arbitrary.
+          // At the level of abstraction where these lists represent
+          // unordered sets, this is choice is non-deterministic, which
+          // is inevitable.
           return harden({
             matched: [elem],
             change: [...specimen.slice(0, i), ...specimen.slice(i + 1)],

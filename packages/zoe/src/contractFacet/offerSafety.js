@@ -18,11 +18,11 @@ const satisfiesInternal = (getAmountMath, giveOrWant = {}, allocation) => {
     }
     const amountMath = getAmountMath(requiredAmountPattern.brand);
     const allocationAmount = allocation[keyword];
-    return (
-      // amountMath.isGTE(allocationAmount, requiredAmountPattern) ||
-      // amountMath.matches(requiredAmountPattern, allocationAmount)
-      amountMath.isGTE(allocationAmount, requiredAmountPattern)
+    const split = amountMath.frugalSplit(
+      requiredAmountPattern,
+      allocationAmount,
     );
+    return split !== undefined;
   };
   return Object.entries(giveOrWant).every(isGTEByKeyword);
 };

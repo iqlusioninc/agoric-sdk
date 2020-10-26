@@ -72,9 +72,7 @@ const strSetMathHelpers = harden({
       const remove = subPattern => {
         const subPatternKind = patternKindOf(subPattern);
         if (subPatternKind === undefined) {
-          if (!changeSet.delete(subPattern)) {
-            return false;
-          }
+          return changeSet.delete(subPattern);
         }
         switch (subPatternKind) {
           case '*': {

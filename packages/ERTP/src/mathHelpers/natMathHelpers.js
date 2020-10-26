@@ -39,6 +39,7 @@ const natMathHelpers = harden({
           change: specimen - pattern,
         });
       }
+      return undefined;
     }
     switch (patternKind) {
       case '*': {
