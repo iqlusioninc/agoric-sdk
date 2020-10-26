@@ -2,9 +2,11 @@
 
 import { passStyleOf } from '@agoric/marshal';
 import { assert, details as d, q } from '@agoric/assert';
-import { sameStructure, patternKindOf } from '@agoric/same-structure';
+import { sameStructure, isGround, match } from '@agoric/same-structure';
 
 import '../types';
+
+const { entries } = Object;
 
 // Operations for arrays with unique objects identifying and providing
 // information about digital assets. Used for Zoe invites.
@@ -99,42 +101,32 @@ const setMathHelpers = harden({
     return harden(left.filter(leftElemNotInRight));
   },
 
-  // TODO Reform awful code!
-  // Expanded this in place this way only as part of an expedient
-  // spike. It is indeed a horrible clump of code that must be broken up.
+  // Do a case split among easy cases, and error on the rest for now.
+  // TODO Actually implement this correctly.
   doFrugalSplit: (pattern, specimen) => {
-    const patternKind = patternKindOf(pattern);
-    if (patternKind === undefined) {
-      const specimenBuckets = makeBuckets(specimen);
-      const patternBuckets = makeBuckets(pattern);
-      const remove = subPattern => {
-        // TODO Use pattern match
-        return hasElement(specimenBuckets, subPattern);
-      };
-      if (!pattern.every(remove)) {
-        return undefined;
-      }
-      const elemNotInPattern = elem => {
-        // TODO Use pattern match
-        return !hasElement(patternBuckets, elem);
-      };
-      const change = harden(specimen.filter(elemNotInPattern));
-      return harden({
-        matched: setMathHelpers.doSubtract(specimen, change),
-        change,
-      });
-    }
-    switch (patternKind) {
-      case '*': {
+    if (isGround(pattern)) {
+      if (setMathHelpers.doIsGTE(specimen, pattern)) {
         return harden({
-          matched: identity,
-          change: specimen,
+          matched: pattern,
+          change: setMathHelpers.doSubtract(specimen, pattern),
         });
       }
-      default: {
-        throw assert.fail(d`Unexpected patternKind ${q(patternKind)}`);
-      }
+      return undefined;
     }
+    // Check for the special case where the pattern is a singleton array
+    if (Array.isArray(pattern) && pattern.length === 1) {
+      const subPattern = pattern[0];
+      for (const [i, elem] of entries(specimen)) {
+        if (match(subPattern, elem)) {
+          return harden({
+            matched: [elem],
+            change: [...specimen.slice(0, i), ...specimen.slice(i + 1)],
+          });
+        }
+      }
+      return undefined;
+    }
+    throw assert.fail(d`Only singleton patterns supported for now`);
   },
 });
 

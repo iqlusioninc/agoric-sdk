@@ -187,4 +187,10 @@ function match(outerPattern, outerSpecimen) {
 }
 harden(match);
 
-export { PATTERN_KIND as PATTERN, STAR_PATTERN, patternKindOf, match };
+export {
+  PATTERN_KIND as PATTERN,
+  STAR_PATTERN,
+  patternKindOf,
+  match,
+  isGround,
+};

@@ -440,7 +440,11 @@ test('zoe - coveredCall with swap for invitation', async t => {
   const optionAmountPattern = invitationAmountMath.makePattern(
     harden([optionDescPattern]),
   );
-  t.assert(invitationAmountMath.matches(optionAmountPattern, optionAmount));
+  const split = invitationAmountMath.frugalSplit(
+    optionAmountPattern,
+    optionAmount,
+  );
+  t.assert(split !== undefined);
 
   // Let's imagine that Bob wants to create a swap to trade this
   // invitation for bucks.

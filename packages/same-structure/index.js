@@ -4,4 +4,10 @@ export {
   mustBeSameStructure,
   mustBeComparable,
 } from './src/sameStructure';
-export { PATTERN, STAR_PATTERN, patternKindOf, match } from './src/match';
+export {
+  PATTERN,
+  STAR_PATTERN,
+  patternKindOf,
+  match,
+  isGround,
+} from './src/match';
