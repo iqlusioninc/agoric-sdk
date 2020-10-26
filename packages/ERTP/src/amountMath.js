@@ -1,12 +1,10 @@
 // @ts-check
 
-import { assert, details as d, q } from '@agoric/assert';
+import { assert, details as d } from '@agoric/assert';
 
 import {
   mustBeComparable,
   patternKindOf,
-  match,
-  PATTERN,
   STAR_PATTERN,
 } from '@agoric/same-structure';
 
@@ -118,6 +116,77 @@ function makeAmountMath(brand, amountMathKind) {
     },
 
     /**
+     * Make sure this amount is valid and return it if so, throwing if invalid.
+     *
+     * @param {Amount} allegedAmount
+     * @returns {Amount} or throws if invalid
+     */
+    coerce: allegedAmount => {
+      // If the cache already has the allegedAmount, that
+      // means it is a valid amount.
+      if (cache.has(allegedAmount)) {
+        return allegedAmount;
+      }
+      const { brand: allegedBrand, value } = allegedAmount;
+      assert(
+        allegedBrand !== undefined,
+        d`alleged brand is undefined. Did you pass a value rather than an amount?`,
+      );
+      assert(
+        brand === allegedBrand,
+        d`the brand in the allegedAmount in 'coerce' didn't match the amountMath brand`,
+      );
+      // Will throw on inappropriate value
+      return amountMath.make(value);
+    },
+
+    // Get the value from the amount.
+    getValue: amount => amountMath.coerce(amount).value,
+
+    // Represents the empty set/mathematical identity.
+    // eslint-disable-next-line no-use-before-define
+    getEmpty: () => empty,
+
+    // Is the amount equal to the empty set?
+    isEmpty: amount => helpers.doIsEmpty(amountMath.getValue(amount)),
+
+    // Is leftAmount greater than or equal to rightAmount? In other
+    // words, is everything in the rightAmount included in the
+    // leftAmount?
+    isGTE: (leftAmount, rightAmount) =>
+      helpers.doIsGTE(
+        amountMath.getValue(leftAmount),
+        amountMath.getValue(rightAmount),
+      ),
+
+    // Is leftAmount equal to rightAmount?
+    isEqual: (leftAmount, rightAmount) =>
+      helpers.doIsEqual(
+        amountMath.getValue(leftAmount),
+        amountMath.getValue(rightAmount),
+      ),
+
+    // Combine leftAmount and rightAmount.
+    add: (leftAmount, rightAmount) =>
+      amountMath.make(
+        helpers.doAdd(
+          amountMath.getValue(leftAmount),
+          amountMath.getValue(rightAmount),
+        ),
+      ),
+
+    // Return the amount included in leftAmount but not included in
+    // rightAmount. If leftAmount does not include all of rightAmount,
+    // error.
+    subtract: (leftAmount, rightAmount) =>
+      amountMath.make(
+        helpers.doSubtract(
+          amountMath.getValue(leftAmount),
+          amountMath.getValue(rightAmount),
+        ),
+      ),
+
+    /**
      * TODO explain.
      *
      * @param {ValuePattern} valuePattern
@@ -144,50 +213,6 @@ function makeAmountMath(brand, amountMathKind) {
     /**
      * TODO explain.
      *
-     * @param {Value} allegedLimit
-     * @param {string} op TODO do the enum tying thing
-     * @returns {AmountPattern}
-     */
-    makeOpPattern: (allegedLimit, op) => {
-      assert(
-        ['<', '<=', '==', '>=', '>'].includes(op),
-        d`unrecognized limit operator ${q(op)}`,
-      );
-      const valuePattern = harden({
-        [PATTERN]: op,
-        limit: helpers.doCoerce(allegedLimit),
-      });
-      return amountMath.makePattern(valuePattern);
-    },
-
-    /**
-     * Make sure this amount is valid and return it if so, throwing if invalid.
-     *
-     * @param {Amount} allegedAmount
-     * @returns {Amount} or throws if invalid
-     */
-    coerce: allegedAmount => {
-      // If the cache already has the allegedAmount, that
-      // means it is a valid amount.
-      if (cache.has(allegedAmount)) {
-        return allegedAmount;
-      }
-      const { brand: allegedBrand, value } = allegedAmount;
-      assert(
-        allegedBrand !== undefined,
-        d`alleged brand is undefined. Did you pass a value rather than an amount?`,
-      );
-      assert(
-        brand === allegedBrand,
-        d`the brand in the allegedAmount in 'coerce' didn't match the amountMath brand`,
-      );
-      // Will throw on inappropriate value
-      return amountMath.make(value);
-    },
-
-    /**
-     * TODO explain.
-     *
      * @param {AmountPattern} allegedAmountPattern
      * @returns {AmountPattern} or throws if invalid
      */
@@ -205,99 +230,24 @@ function makeAmountMath(brand, amountMathKind) {
       return amountMath.makePattern(valuePattern);
     },
 
-    // Get the value from the amount.
-    getValue: amount => amountMath.coerce(amount).value,
-
     // TODO explain.
     getValuePattern: amountPattern =>
       amountMath.coercePattern(amountPattern).value,
 
-    // Represents the empty set/mathematical identity.
-    // eslint-disable-next-line no-use-before-define
-    getEmpty: () => empty,
-
-    // Is the amount equal to the empty set?
-    isEmpty: amount => helpers.doIsEmpty(amountMath.getValue(amount)),
-
-    // Is leftAmount greater than or equal to rightAmount? In other
-    // words, is everything in the rightAmount included in the
-    // leftAmount?
-    isGTE: (leftAmount, rightAmount) =>
-      helpers.doIsGTE(
-        amountMath.getValue(leftAmount),
-        amountMath.getValue(rightAmount),
-      ),
-
-    // Is leftAmount equal to rightAmount?
-    isEqual: (leftAmount, rightAmount) =>
-      helpers.doIsEqual(
-        amountMath.getValue(leftAmount),
-        amountMath.getValue(rightAmount),
-      ),
-
-    matches: (amountPattern, amountSpecimen) => {
-      const pattern = amountMath.getValuePattern(amountPattern);
-      const specimen = amountMath.getValue(amountSpecimen);
-      const patternKind = patternKindOf(pattern);
-      switch (patternKind) {
-        case undefined:
-        case '*':
-        case 'bind': {
-          // Even for the `undefined` case, we do not use `amountMath.isEqual`
-          // here because the `pattern` may still have embedded generic
-          // patterns. However (TODO), using`match` isn't quite right either,
-          // since it will do an exact `sameStructure` - like compare until it
-          // reaches these embedded patterns. We need something that does a
-          // `helpers.doIsEqual`-like compare until it reaches these embedded
-          // patterns.
-          return match(pattern, specimen) !== undefined;
-        }
-        case '<': {
-          return (
-            (helpers.doIsGTE(specimen, pattern.limit) &&
-            !helpers.doIsEqual(specimen, pattern.limit))
-          );
-        }
-        case '<=': {
-          return helpers.doIsGTE(specimen, pattern.limit);
-        }
-        case '==': {
-          return helpers.doIsEqual(pattern.limit, specimen);
-        }
-        case '>=': {
-          return helpers.doIsGTE(pattern.limit, specimen);
-        }
-        case '>': {
-          return (
-            (helpers.doIsGTE(pattern.limit, specimen) &&
-            !helpers.doIsEqual(pattern.limit, specimen))
-          );
-        }
-        default: {
-          throw assert.fail(d`unrecognized pattern kind ${q(patternKind)}`);
-        }
+    frugalSplit: (pattern, specimen) => {
+      const split = helpers.doFrugalSplit(
+        amountMath.getValuePattern(pattern),
+        amountMath.getValue(specimen),
+      );
+      if (split === undefined) {
+        return undefined;
       }
+      const { matched: valueMatched, change: valueChange } = split;
+      return harden({
+        matched: amountMath.make(valueMatched),
+        change: amountMath.make(valueChange),
+      });
     },
-
-    // Combine leftAmount and rightAmount.
-    add: (leftAmount, rightAmount) =>
-      amountMath.make(
-        helpers.doAdd(
-          amountMath.getValue(leftAmount),
-          amountMath.getValue(rightAmount),
-        ),
-      ),
-
-    // Return the amount included in leftAmount but not included in
-    // rightAmount. If leftAmount does not include all of rightAmount,
-    // error.
-    subtract: (leftAmount, rightAmount) =>
-      amountMath.make(
-        helpers.doSubtract(
-          amountMath.getValue(leftAmount),
-          amountMath.getValue(rightAmount),
-        ),
-      ),
   });
   const empty = amountMath.make(helpers.doGetEmpty());
   return amountMath;

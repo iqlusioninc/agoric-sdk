@@ -1,8 +1,8 @@
 // @ts-check
 
 import { passStyleOf } from '@agoric/marshal';
-import { assert, details } from '@agoric/assert';
-import { sameStructure } from '@agoric/same-structure';
+import { assert, details as d, q } from '@agoric/assert';
+import { sameStructure, patternKindOf } from '@agoric/same-structure';
 
 import '../types';
 
@@ -43,7 +43,7 @@ const checkForDupes = buckets => {
       for (let j = i + 1; j < maybeMatches.length; j += 1) {
         assert(
           !sameStructure(maybeMatches[i], maybeMatches[j]),
-          details`value has duplicates: ${maybeMatches[i]} and ${maybeMatches[j]}`,
+          d`value has duplicates: ${maybeMatches[i]} and ${maybeMatches[j]}`,
         );
       }
     }
@@ -92,11 +92,49 @@ const setMathHelpers = harden({
     right.forEach(rightElem => {
       assert(
         hasElement(leftBuckets, rightElem),
-        details`right element ${rightElem} was not in left`,
+        d`right element ${rightElem} was not in left`,
       );
     });
     const leftElemNotInRight = leftElem => !hasElement(rightBuckets, leftElem);
     return harden(left.filter(leftElemNotInRight));
+  },
+
+  // TODO Reform awful code!
+  // Expanded this in place this way only as part of an expedient
+  // spike. It is indeed a horrible clump of code that must be broken up.
+  doFrugalSplit: (pattern, specimen) => {
+    const patternKind = patternKindOf(pattern);
+    if (patternKind === undefined) {
+      const specimenBuckets = makeBuckets(specimen);
+      const patternBuckets = makeBuckets(pattern);
+      const remove = subPattern => {
+        // TODO Use pattern match
+        return hasElement(specimenBuckets, subPattern);
+      };
+      if (!pattern.every(remove)) {
+        return undefined;
+      }
+      const elemNotInPattern = elem => {
+        // TODO Use pattern match
+        return !hasElement(patternBuckets, elem);
+      };
+      const change = harden(specimen.filter(elemNotInPattern));
+      return harden({
+        matched: setMathHelpers.doSubtract(specimen, change),
+        change,
+      });
+    }
+    switch (patternKind) {
+      case '*': {
+        return harden({
+          matched: identity,
+          change: specimen,
+        });
+      }
+      default: {
+        throw assert.fail(d`Unexpected patternKind ${q(patternKind)}`);
+      }
+    }
   },
 });
 
