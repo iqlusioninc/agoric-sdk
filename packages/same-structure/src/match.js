@@ -5,35 +5,103 @@ import { sameValueZero, passStyleOf, REMOTE_STYLE } from '@agoric/marshal';
 import { assert, details as d, q } from '@agoric/assert';
 import { sameStructure } from './sameStructure';
 
+import './types';
+
+const { values } = Object;
+
 /**
  * Special property name within a copyRecord that marks the copyRecord as
- * representing a non-literal pattern. This is only recognized when the
- * copyRecord appears in a pattern context, such as the `pattern` argument
- * of the `match` function. Aside from those positions, the copyRecord is
- * treated as a normal copyRecord where the contents of the pattern are
- * simply copied. This is true even for the `specimen` argument of the
- * `match` function.
+ * representing a non-literal pattern record. See `isGround`.
  */
-const PATTERN = '@pattern';
+const PATTERN_KIND = '@pattern';
 
-const STAR_PATTERN = harden({ [PATTERN]: '*' });
+/**
+ * A pattern record that matches any specimen, i.e., a wildcard.
+ */
+const STAR_PATTERN = harden({ [PATTERN_KIND]: '*' });
 
-const patternKindOf = pattern => {
-  const patternStyle = passStyleOf(pattern);
-  if (patternStyle === 'copyRecord' && PATTERN in pattern) {
-    return pattern[PATTERN];
+/**
+ * If `passable` is a pattern record, return the string identifying what kind
+ * of pattern this pattern record represents. Else return undefined.
+ *
+ * @param {Passable} passable
+ */
+const patternKindOf = passable => {
+  const passStyle = passStyleOf(passable);
+  if (passStyle === 'copyRecord' && PATTERN_KIND in passable) {
+    const patternKind = passable[PATTERN_KIND];
+    assert.string(patternKind);
+    return patternKind;
   }
   return undefined;
 };
 harden(patternKindOf);
 
 /**
+ * A *passable* object is a pass-by-copy superstructure ending in
+ * non-pass-by-copy leaves, each of which is either a promise or a
+ * REMOTE_STYLE. A passable object in which none of the leaves are promises
+ * is a *comparable*. A comparable object in which none of the
+ * copyRecords are pattern records is *ground*. All other comparables are
+ * *non-ground*.
  *
+ * Only some contexts care about the distinction between ground and non-ground,
+ * such as the arguments to the `match` function below. For most other purposes,
+ * these are simply passable and comparable objects. However, some uses of
+ * `sameStructure` to compare comparables should probably either be guarded by
+ * `isGround` tests or converted to `match` calls.
+ *
+ * @param {Passable} passable
+ * @returns {boolean}
+ */
+function isGround(passable) {
+  const passStyle = passStyleOf(passable);
+  switch (passStyle) {
+    case 'null':
+    case 'undefined':
+    case 'string':
+    case 'boolean':
+    case 'number':
+    case 'bigint':
+    case REMOTE_STYLE:
+    case 'copyError': {
+      return true;
+    }
+    case 'promise': {
+      return false;
+    }
+    case 'copyArray': {
+      return passable.every(isGround);
+    }
+    case 'copyRecord': {
+      const patternKind = patternKindOf(passable);
+      if (patternKind !== undefined) {
+        return false;
+      }
+      return values(passable).every(isGround);
+    }
+    default: {
+      throw new TypeError(`unrecognized passStyle ${passStyle}`);
+    }
+  }
+}
+harden(isGround);
+
+/**
+ * @param {Pattern} outerPattern
+ * @param {Ground} outerSpecimen
+ * @returns {Bindings | undefined}
  */
 function match(outerPattern, outerSpecimen) {
+  assert(
+    isGround(outerSpecimen),
+    d`Can only match against ground comparables for now`,
+  );
+
   // Although it violates Jessie, don't harden `bindings` yet
   const bindings = { __proto__: null };
 
+  // TODO Reduce redundancy with sameStructure.
   function matchInternal(pattern, specimen) {
     const patternKind = patternKindOf(pattern);
     if (patternKind !== undefined) {
@@ -119,4 +187,4 @@ function match(outerPattern, outerSpecimen) {
 }
 harden(match);
 
-export { PATTERN, STAR_PATTERN, patternKindOf, match };
+export { PATTERN_KIND as PATTERN, STAR_PATTERN, patternKindOf, match };
