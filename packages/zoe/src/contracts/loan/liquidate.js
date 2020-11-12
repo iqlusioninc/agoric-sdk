@@ -3,81 +3,59 @@ import '../../../exported';
 
 import { E } from '@agoric/eventual-send';
 
-import { depositToSeat, withdrawFromSeat } from '../../contractSupport';
-
 export const doLiquidation = async (
   zcf,
   collateralSeat,
   autoswapPublicFacetP,
   lenderSeat,
 ) => {
-  const zoeService = zcf.getZoeService();
   const loanMath = zcf.getTerms().maths.Loan;
 
   const allCollateral = collateralSeat.getAmountAllocated('Collateral');
 
-  const { Collateral: collateralPayment } = await withdrawFromSeat(
-    zcf,
-    collateralSeat,
-    {
-      Collateral: allCollateral,
-    },
-  );
+  const swapInvitation = E(autoswapPublicFacetP).makeSwapInInvitation();
+
+  const fromAmounts = harden({ Collateral: allCollateral });
+  const toAmounts = harden({ In: allCollateral });
 
   const proposal = harden({
-    give: { In: allCollateral },
+    give: toAmounts,
     want: { Out: loanMath.getEmpty() },
   });
 
-  const payments = harden({ In: collateralPayment });
-
-  const swapInvitation = E(autoswapPublicFacetP).makeSwapInInvitation();
-
-  const autoswapUserSeat = E(zoeService).offer(
+  const offerResultP = collateralSeat.offerTo(
     swapInvitation,
     proposal,
-    payments,
+    fromAmounts,
+    toAmounts,
   );
+  // collateralSeat has In/Out keywords now.
 
-  /**
-   * @param {{ Out: Promise<Payment>; In: Promise<Payment>; }} payouts
-   */
-  const handlePayoutsAndShutdown = async payouts => {
-    const { Out: loanPayout, In: collateralPayout } = payouts;
-    const { Out: loanAmount, In: collateralAmount } = await E(
-      autoswapUserSeat,
-    ).getCurrentAllocation();
-    // AWAIT ///
-    const amounts = harden({
-      Collateral: collateralAmount,
-      Loan: loanAmount,
+  const reallocateToLender = () => {
+    const collateralSeatStaging = collateralSeat.stage({});
+    const lenderSeatStaging = lenderSeat.stage({
+      Loan: collateralSeat.getAmountAllocated('Out'),
+      Collateral: collateralSeat.getAmountAllocated('In'),
     });
-    const payoutPayments = harden({
-      Collateral: collateralPayout,
-      Loan: loanPayout,
-    });
-    await depositToSeat(zcf, lenderSeat, amounts, payoutPayments);
 
-    const closeSuccessfully = () => {
-      lenderSeat.exit();
-      collateralSeat.exit();
-      zcf.shutdown('your loan had to be liquidated');
-    };
-
-    const closeWithFailure = err => {
-      lenderSeat.kickOut(err);
-      collateralSeat.kickOut(err);
-      zcf.shutdownWithFailure(err);
-    };
-
-    await E(autoswapUserSeat)
-      .getOfferResult()
-      .then(closeSuccessfully, closeWithFailure);
+    zcf.reallocate(collateralSeatStaging, lenderSeatStaging);
   };
 
-  return E(autoswapUserSeat)
-    .getPayouts()
-    .then(handlePayoutsAndShutdown);
+  const closeSuccessfully = () => {
+    reallocateToLender();
+    lenderSeat.exit();
+    collateralSeat.exit();
+    zcf.shutdown('your loan had to be liquidated');
+  };
+
+  const closeWithFailure = err => {
+    reallocateToLender();
+    lenderSeat.kickOut(err);
+    collateralSeat.kickOut(err);
+    zcf.shutdownWithFailure(err);
+  };
+
+  offerResultP.then(closeSuccessfully, closeWithFailure);
 };
 
 /**

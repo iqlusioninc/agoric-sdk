@@ -11,6 +11,7 @@ import {
 } from '../contractSupport';
 
 import '../../exported';
+import setMathHelpers from '@agoric/ertp/src/mathHelpers/setMathHelpers';
 
 /**
  * This contract is inspired by the description of an OTC Desk smart
@@ -84,21 +85,16 @@ const start = zcf => {
       },
     });
 
-    const payments = await withdrawFromSeat(zcf, marketMakerSeat, assets);
-    const sellerUserSeat = await E(zoe).offer(
+    // Deposits directly onto the marketMakerSeat with the keywords
+    // from the coveredCall. You can change the keywords by doing a reallocation
+    const offerResult = await marketMakerSeat.offerTo(
       creatorInvitation,
       proposal,
-      payments,
+      assets,
+      assets,
+      marketMakerSeat,
     );
-
-    E(sellerUserSeat)
-      .getPayouts()
-      .then(async payoutPayments => {
-        const amounts = await E(sellerUserSeat).getCurrentAllocation();
-        await depositToSeat(zcf, marketMakerSeat, amounts, payoutPayments);
-      });
-
-    const option = E(sellerUserSeat).getOfferResult();
+    const option = offerResult;
     return option;
   };
 
