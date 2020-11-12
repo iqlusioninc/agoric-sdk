@@ -410,7 +410,6 @@ export function buildRootObject(powers, _params, testJigSetter = undefined) {
        */
       setTestJig: (testFn = () => ({})) => {
         if (testJigSetter) {
-          console.warn('TEST ONLY: capturing test data', testFn);
           testJigSetter({ ...testFn(), zcf });
         }
       },

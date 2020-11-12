@@ -83,7 +83,7 @@ const start = zcf => {
       },
     });
 
-    const coveredCallUserSeat = await offerTo(
+    const { userSeatPromise: coveredCallUserSeat } = await offerTo(
       zcf,
       creatorInvitation,
       proposal,

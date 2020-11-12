@@ -4,10 +4,12 @@ import '../../exported';
 import { assert, details } from '@agoric/assert';
 import { sameStructure } from '@agoric/same-structure';
 import { E } from '@agoric/eventual-send';
+import { makePromiseKit } from '@agoric/promise-kit';
 
 import { MathKind } from '@agoric/ertp';
 import { satisfiesWant } from '../contractFacet/offerSafety';
 import { objectMap } from '../objArrayConversion';
+
 
 export const defaultAcceptanceMsg = `The offer has been accepted. Once the contract has been completed, please check your payout`;
 
@@ -434,6 +436,15 @@ export const mapKeywords = (keywordRecord, keywordMapping) => {
   );
 };
 
+const reverse = keywordRecord => {
+  if (keywordRecord === undefined) {
+    return undefined;
+  }
+  return Object.fromEntries(
+    Object.entries(keywordRecord).map(([key, value]) => [value, key]),
+  );
+};
+
 // https://github.com/Agoric/agoric-sdk/blob/master/packages/zoe/src/contracts/loan/liquidate.js
 // https://github.com/Agoric/agoric-sdk/blob/master/packages/zoe/src/contracts/otcDesk.js
 export const offerTo = async (
@@ -448,18 +459,30 @@ export const offerTo = async (
   const zoe = zcf.getZoeService();
 
   const payments = await withdrawFromSeat(zcf, fromSeat, fromAssets);
-  const userSeat = await E(zoe).offer(invitation, proposal, payments);
 
-  E(userSeat)
+  // Map to the other contract's keywords
+  const paymentsForOtherContract = mapKeywords(payments, keywordMapping);
+
+  const userSeatPromise = E(zoe).offer(
+    invitation,
+    proposal,
+    paymentsForOtherContract,
+  );
+
+  const depositedPromiseKit = makePromiseKit();
+
+  E(userSeatPromise)
     .getPayouts()
     .then(async payoutPayments => {
-      const amounts = await E(userSeat).getCurrentAllocation();
+      const amounts = await E(userSeatPromise).getCurrentAllocation();
 
-      const mappedAmounts = mapKeywords(amounts, keywordMapping);
-      const mappedPayments = mapKeywords(payoutPayments, keywordMapping);
-
+      // Map back to the original contract's keywords
+      const mappingReversed = reverse(keywordMapping);
+      const mappedAmounts = mapKeywords(amounts, mappingReversed);
+      const mappedPayments = mapKeywords(payoutPayments, mappingReversed);
       await depositToSeat(zcf, toSeat, mappedAmounts, mappedPayments);
+      depositedPromiseKit.resolve(mappedAmounts);
     });
 
-  return userSeat;
+  return harden({ userSeatPromise, deposited: depositedPromiseKit.promise });
 };

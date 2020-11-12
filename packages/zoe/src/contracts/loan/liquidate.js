@@ -30,7 +30,7 @@ export const doLiquidation = async (
     Loan: 'Out',
   });
 
-  const autoswapUserSeat = await offerTo(
+  const { userSeatPromise: autoswapUserSeat, deposited } = await offerTo(
     zcf,
     swapInvitation,
     proposal,
@@ -53,6 +53,7 @@ export const doLiquidation = async (
   };
 
   const offerResultP = E(autoswapUserSeat).getOfferResult();
+  await deposited;
   offerResultP.then(closeSuccessfully, closeWithFailure);
 };
 
