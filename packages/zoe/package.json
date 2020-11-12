@@ -11,7 +11,7 @@
   },
   "scripts": {
     "build": "yarn build-zcfBundle",
-    "test": "ava --verbose",
+    "test": "ava",
     "test:nyc": "nyc ava",
     "build-zcfBundle": "node -r esm scripts/build-zcfBundle.js",
     "lint-fix": "yarn lint --fix",
