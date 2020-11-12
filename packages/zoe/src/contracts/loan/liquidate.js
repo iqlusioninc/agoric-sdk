@@ -3,6 +3,8 @@ import '../../../exported';
 
 import { E } from '@agoric/eventual-send';
 
+import { offerTo } from '../../contractSupport/zoeHelpers';
+
 export const doLiquidation = async (
   zcf,
   collateralSeat,
@@ -23,38 +25,34 @@ export const doLiquidation = async (
     want: { Out: loanMath.getEmpty() },
   });
 
-  const offerResultP = collateralSeat.offerTo(
+  const keywordMapping = harden({
+    Collateral: 'In',
+    Loan: 'Out',
+  });
+
+  const autoswapUserSeat = await offerTo(
+    zcf,
     swapInvitation,
     proposal,
+    collateralSeat,
     fromAmounts,
-    toAmounts,
+    lenderSeat,
+    keywordMapping,
   );
-  // collateralSeat has In/Out keywords now.
-
-  const reallocateToLender = () => {
-    const collateralSeatStaging = collateralSeat.stage({});
-    const lenderSeatStaging = lenderSeat.stage({
-      Loan: collateralSeat.getAmountAllocated('Out'),
-      Collateral: collateralSeat.getAmountAllocated('In'),
-    });
-
-    zcf.reallocate(collateralSeatStaging, lenderSeatStaging);
-  };
 
   const closeSuccessfully = () => {
-    reallocateToLender();
     lenderSeat.exit();
     collateralSeat.exit();
     zcf.shutdown('your loan had to be liquidated');
   };
 
   const closeWithFailure = err => {
-    reallocateToLender();
-    lenderSeat.kickOut(err);
-    collateralSeat.kickOut(err);
+    lenderSeat.fail(err);
+    collateralSeat.fail(err);
     zcf.shutdownWithFailure(err);
   };
 
+  const offerResultP = E(autoswapUserSeat).getOfferResult();
   offerResultP.then(closeSuccessfully, closeWithFailure);
 };
 

@@ -4,14 +4,12 @@ import { E } from '@agoric/eventual-send';
 import { assert } from '@agoric/assert';
 import {
   trade,
-  depositToSeat,
-  withdrawFromSeat,
+  offerTo,
   saveAllIssuers,
   assertProposalShape,
 } from '../contractSupport';
 
 import '../../exported';
-import setMathHelpers from '@agoric/ertp/src/mathHelpers/setMathHelpers';
 
 /**
  * This contract is inspired by the description of an OTC Desk smart
@@ -85,16 +83,16 @@ const start = zcf => {
       },
     });
 
-    // Deposits directly onto the marketMakerSeat with the keywords
-    // from the coveredCall. You can change the keywords by doing a reallocation
-    const offerResult = await marketMakerSeat.offerTo(
+    const coveredCallUserSeat = await offerTo(
+      zcf,
       creatorInvitation,
       proposal,
-      assets,
+      marketMakerSeat,
       assets,
       marketMakerSeat,
     );
-    const option = offerResult;
+
+    const option = E(coveredCallUserSeat).getOfferResult();
     return option;
   };
 
