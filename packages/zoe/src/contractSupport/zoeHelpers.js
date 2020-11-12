@@ -421,3 +421,45 @@ export async function saveAllIssuers(zcf, issuerKeywordRecord = {}) {
   );
   return Promise.all(issuersPSaved);
 }
+
+export const mapKeywords = (keywordRecord, keywordMapping) => {
+  if (keywordMapping === undefined) {
+    return keywordRecord;
+  }
+  return Object.fromEntries(
+    Object.entries(keywordRecord).map(([keyword, value]) => [
+      keywordMapping[keyword],
+      value,
+    ]),
+  );
+};
+
+// https://github.com/Agoric/agoric-sdk/blob/master/packages/zoe/src/contracts/loan/liquidate.js
+// https://github.com/Agoric/agoric-sdk/blob/master/packages/zoe/src/contracts/otcDesk.js
+export const offerTo = async (
+  zcf,
+  invitation,
+  proposal,
+  fromSeat,
+  fromAssets,
+  toSeat,
+  keywordMapping = undefined,
+) => {
+  const zoe = zcf.getZoeService();
+
+  const payments = await withdrawFromSeat(zcf, fromSeat, fromAssets);
+  const userSeat = await E(zoe).offer(invitation, proposal, payments);
+
+  E(userSeat)
+    .getPayouts()
+    .then(async payoutPayments => {
+      const amounts = await E(userSeat).getCurrentAllocation();
+
+      const mappedAmounts = mapKeywords(amounts, keywordMapping);
+      const mappedPayments = mapKeywords(payoutPayments, keywordMapping);
+
+      await depositToSeat(zcf, toSeat, mappedAmounts, mappedPayments);
+    });
+
+  return userSeat;
+};
