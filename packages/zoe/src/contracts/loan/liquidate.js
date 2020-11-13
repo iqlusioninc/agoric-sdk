@@ -30,12 +30,12 @@ export const doLiquidation = async (
     Loan: 'Out',
   });
 
-  const { userSeatPromise: autoswapUserSeat, deposited } = await offerTo(
-    zcf,
+  const fromSeatStaging = collateralSeat.stageLoss(fromAmounts);
+
+  const { userSeatPromise: autoswapUserSeat, deposited } = zcf.offerTo(
     swapInvitation,
     proposal,
-    collateralSeat,
-    fromAmounts,
+    fromSeatStaging,
     lenderSeat,
     keywordMapping,
   );

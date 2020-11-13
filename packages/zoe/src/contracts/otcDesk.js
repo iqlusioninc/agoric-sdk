@@ -83,13 +83,12 @@ const start = zcf => {
       },
     });
 
-    const { userSeatPromise: coveredCallUserSeat } = await offerTo(
-      zcf,
+    const fromSeatStaging = marketMakerSeat.stageLoss(assets);
+
+    const { userSeatPromise: coveredCallUserSeat } = zcf.offerTo(
       creatorInvitation,
       proposal,
-      marketMakerSeat,
-      assets,
-      marketMakerSeat,
+      fromSeatStaging,
     );
 
     const option = E(coveredCallUserSeat).getOfferResult();
