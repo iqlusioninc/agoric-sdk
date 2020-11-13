@@ -10,7 +10,6 @@ import { MathKind } from '@agoric/ertp';
 import { satisfiesWant } from '../contractFacet/offerSafety';
 import { objectMap } from '../objArrayConversion';
 
-
 export const defaultAcceptanceMsg = `The offer has been accepted. Once the contract has been completed, please check your payout`;
 
 const getKeysSorted = obj =>
@@ -424,6 +423,7 @@ export async function saveAllIssuers(zcf, issuerKeywordRecord = {}) {
   return Promise.all(issuersPSaved);
 }
 
+/** @type {MapKeywords} */
 export const mapKeywords = (keywordRecord, keywordMapping) => {
   if (keywordMapping === undefined) {
     return keywordRecord;
@@ -435,18 +435,17 @@ export const mapKeywords = (keywordRecord, keywordMapping) => {
     ]),
   );
 };
-
+/** @type {Reverse} */
 const reverse = keywordRecord => {
   if (keywordRecord === undefined) {
-    return undefined;
+    return keywordRecord;
   }
   return Object.fromEntries(
     Object.entries(keywordRecord).map(([key, value]) => [value, key]),
   );
 };
 
-// https://github.com/Agoric/agoric-sdk/blob/master/packages/zoe/src/contracts/loan/liquidate.js
-// https://github.com/Agoric/agoric-sdk/blob/master/packages/zoe/src/contracts/otcDesk.js
+/** @type {OfferTo} */
 export const offerTo = async (
   zcf,
   invitation,
