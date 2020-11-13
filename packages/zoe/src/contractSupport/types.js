@@ -49,3 +49,37 @@
  * @param {string} [rightHasExitedMsg]
  * @returns {string}
  */
+
+/**
+ * @typedef {Object} OfferToReturns
+ * @property {Promise<UserSeat>} userSeatPromise
+ * @property {Promise<AmountKeywordRecord>} deposited
+ */
+
+/**
+ * @typedef {Record<Keyword,Keyword>} KeywordKeywordRecord
+ */
+
+/**
+ * @callback OfferTo
+ * @param {ContractFacet} zcf
+ * @param {ERef<Invitation>} invitation
+ * @param {Proposal} proposal
+ * @param {ZCFSeat} fromSeat
+ * @param {AmountKeywordRecord} fromAssets
+ * @param {ZCFSeat} toSeat
+ * @param {KeywordKeywordRecord=} keywordMapping
+ * @returns {OfferToReturns}
+ */
+
+/**
+ * @callback Reverse
+ * @param {KeywordKeywordRecord=} keywordRecord
+ * @returns {KeywordKeywordRecord | undefined }
+ */
+
+/**
+ * @callback MapKeywords
+ * @param {AmountKeywordRecord | PaymentPKeywordRecord } keywordRecord
+ * @param {KeywordKeywordRecord | undefined } keywordMapping
+ */
