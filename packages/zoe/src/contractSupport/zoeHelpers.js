@@ -470,18 +470,20 @@ export const offerTo = async (
 
   const depositedPromiseKit = makePromiseKit();
 
+  const doDeposit = async payoutPayments => {
+    const amounts = await E(userSeatPromise).getCurrentAllocation();
+
+    // Map back to the original contract's keywords
+    const mappingReversed = reverse(keywordMapping);
+    const mappedAmounts = mapKeywords(amounts, mappingReversed);
+    const mappedPayments = mapKeywords(payoutPayments, mappingReversed);
+    await depositToSeat(zcf, toSeat, mappedAmounts, mappedPayments);
+    depositedPromiseKit.resolve(mappedAmounts);
+  };
+
   E(userSeatPromise)
     .getPayouts()
-    .then(async payoutPayments => {
-      const amounts = await E(userSeatPromise).getCurrentAllocation();
-
-      // Map back to the original contract's keywords
-      const mappingReversed = reverse(keywordMapping);
-      const mappedAmounts = mapKeywords(amounts, mappingReversed);
-      const mappedPayments = mapKeywords(payoutPayments, mappingReversed);
-      await depositToSeat(zcf, toSeat, mappedAmounts, mappedPayments);
-      depositedPromiseKit.resolve(mappedAmounts);
-    });
+    .then(doDeposit);
 
   return harden({ userSeatPromise, deposited: depositedPromiseKit.promise });
 };
