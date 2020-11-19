@@ -40,7 +40,7 @@ const cmp = (a, b) => {
  * @property {(state: any) => void} [inboxStateChangeHandler=noActionStateChangeHandler]
  * @param {MakeWalletParams} param0
  */
-export async function makeWallet({
+export function makeWallet({
   zoe,
   board,
   pursesStateChangeHandler = noActionStateChangeHandler,
@@ -121,10 +121,16 @@ export async function makeWallet({
   // @qclass is lost.
   const { unserialize: fillInSlots } = makeMarshal(noOp, identitySlotToValFn);
 
+  /** @type {NotifierRecord<OfferState[]>} */
   const {
-    notifier: pursesNotifier,
-    updater: pursesUpdater,
-  } = /** @type {NotifierRecord<PursesFullState[]>} */ (makeNotifierKit([]));
+    notifier: offersNotifier,
+    updater: offersUpdater,
+  } = makeNotifierKit();
+
+  /** @type {NotifierRecord<PursesFullState[]>} */
+  const { notifier: pursesNotifier, updater: pursesUpdater } = makeNotifierKit(
+    [],
+  );
 
   /**
    * @param {Petname} pursePetname
@@ -291,6 +297,7 @@ export async function makeWallet({
     inboxState.set(id, offerForDisplay);
     if (doPush) {
       // Only trigger a state change if this was a single update.
+      offersUpdater.updateState([...inboxState.values()]);
       inboxStateChangeHandler(getInboxState());
     }
   }
@@ -303,6 +310,7 @@ export async function makeWallet({
       ),
     );
     // Now batch together all the state changes.
+    offersUpdater.updateState([...inboxState.values()]);
     inboxStateChangeHandler(getInboxState());
   }
 
@@ -1089,15 +1097,14 @@ export async function makeWallet({
   };
 
   // Allow people to send us payments.
-  const selfContact = await addContact('Self', {
+  const selfContact = addContact('Self', {
     receive(payment) {
       return addPayment(payment);
     },
   });
-
   async function getDepositFacetId(_brandBoardId) {
     // Always return the generic deposit facet.
-    return selfContact.depositBoardId;
+    return E.G(selfContact).depositBoardId;
   }
 
   async function disableAutoDeposit(pursePetname) {
@@ -1132,15 +1139,13 @@ export async function makeWallet({
       return pendingP;
     }
 
-    const pr = makePromiseKit();
-    pendingEnableAutoDeposits.init(brand, pr.promise);
-
-    const boardId = selfContact.depositBoardId;
+    const boardIdP = E.G(selfContact).depositBoardId;
+    pendingEnableAutoDeposits.init(brand, boardIdP);
+    const boardId = await boardIdP;
     brandToDepositFacetId.init(brand, boardId);
 
-    pr.resolve(boardId);
     await updateAllPurseState();
-    return pr.promise;
+    return boardIdP;
   }
 
   /**
@@ -1269,6 +1274,9 @@ export async function makeWallet({
     getIssuersNotifier() {
       return issuersNotifier;
     },
+    getOffersNotifier() {
+      return offersNotifier;
+    },
     addIssuer,
     publishIssuer,
     addInstance,
@@ -1287,6 +1295,11 @@ export async function makeWallet({
     getPurse,
     getPurseIssuer,
     addOffer,
+    async addOfferInvitation(_offer, _invitation, _dappOrigin = undefined) {
+      // Will be part of the Rendezvous system, when landed.
+      // TODO unimplemented
+      throw Error(`Adding an invitation to an offer is unimplemented`);
+    },
     declineOffer,
     cancelOffer,
     acceptOffer,
@@ -1309,21 +1322,22 @@ export async function makeWallet({
     },
   });
 
-  // Make Zoe invite purse
-  const ZOE_INVITE_BRAND_PETNAME = 'zoe invite';
-  const ZOE_INVITE_PURSE_PETNAME = 'Default Zoe invite purse';
-  const inviteIssuerP = E(zoe).getInvitationIssuer();
-  const addZoeIssuer = issuerP =>
-    wallet.addIssuer(ZOE_INVITE_BRAND_PETNAME, issuerP);
-  const makeInvitePurse = () =>
-    wallet.makeEmptyPurse(ZOE_INVITE_BRAND_PETNAME, ZOE_INVITE_PURSE_PETNAME);
-  const addInviteDepositFacet = () =>
-    E(wallet).enableAutoDeposit(ZOE_INVITE_PURSE_PETNAME);
+  const initialize = async () => {
+    // Make Zoe invite purse
+    const ZOE_INVITE_BRAND_PETNAME = 'zoe invite';
+    const ZOE_INVITE_PURSE_PETNAME = 'Default Zoe invite purse';
+    const inviteIssuerP = E(zoe).getInvitationIssuer();
+    const addZoeIssuer = issuerP =>
+      wallet.addIssuer(ZOE_INVITE_BRAND_PETNAME, issuerP);
+    const makeInvitePurse = () =>
+      wallet.makeEmptyPurse(ZOE_INVITE_BRAND_PETNAME, ZOE_INVITE_PURSE_PETNAME);
+    const addInviteDepositFacet = () =>
+      E(wallet).enableAutoDeposit(ZOE_INVITE_PURSE_PETNAME);
 
-  await addZoeIssuer(inviteIssuerP)
-    .then(makeInvitePurse)
-    .then(addInviteDepositFacet);
-  zoeInvitePurse = wallet.getPurse(ZOE_INVITE_PURSE_PETNAME);
-
-  return wallet;
+    await addZoeIssuer(inviteIssuerP)
+      .then(makeInvitePurse)
+      .then(addInviteDepositFacet);
+    zoeInvitePurse = wallet.getPurse(ZOE_INVITE_PURSE_PETNAME);
+  };
+  return { admin: wallet, initialized: initialize() };
 }
