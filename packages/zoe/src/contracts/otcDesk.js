@@ -86,9 +86,9 @@ const start = zcf => {
     const { userSeatPromise: coveredCallUserSeat } = await offerTo(
       zcf,
       creatorInvitation,
+      undefined,
       proposal,
       marketMakerSeat,
-      assets,
       marketMakerSeat,
     );
 

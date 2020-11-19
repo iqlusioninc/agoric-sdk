@@ -424,22 +424,18 @@ export async function saveAllIssuers(zcf, issuerKeywordRecord = {}) {
 }
 
 /** @type {MapKeywords} */
-export const mapKeywords = (keywordRecord, keywordMapping) => {
-  if (keywordMapping === undefined) {
-    return keywordRecord;
-  }
+export const mapKeywords = (keywordRecord = {}, keywordMapping) => {
   return Object.fromEntries(
-    Object.entries(keywordRecord).map(([keyword, value]) => [
-      keywordMapping[keyword],
-      value,
-    ]),
+    Object.entries(keywordRecord).map(([keyword, value]) => {
+      if (keywordMapping[keyword] === undefined) {
+        return [keyword, value];
+      }
+      return [keywordMapping[keyword], value];
+    }),
   );
 };
 /** @type {Reverse} */
-const reverse = keywordRecord => {
-  if (keywordRecord === undefined) {
-    return keywordRecord;
-  }
+const reverse = (keywordRecord = {}) => {
   return Object.fromEntries(
     Object.entries(keywordRecord).map(([key, value]) => [value, key]),
   );
@@ -449,15 +445,26 @@ const reverse = keywordRecord => {
 export const offerTo = async (
   zcf,
   invitation,
+  keywordMapping = {},
   proposal,
   fromSeat,
-  fromAssets,
   toSeat,
-  keywordMapping = undefined,
 ) => {
   const zoe = zcf.getZoeService();
+  const mappingReversed = reverse(keywordMapping);
+  console.log(proposal.give);
+  console.log(mappingReversed);
+  console.log(mapKeywords(proposal.give, mappingReversed));
 
-  const payments = await withdrawFromSeat(zcf, fromSeat, fromAssets);
+  // the proposal is in the other contract's keywords, but we want to
+  // use `proposal.give` to withdraw
+
+  const payments = await withdrawFromSeat(
+    zcf,
+    fromSeat,
+    // `proposal.give` may be undefined
+    mapKeywords(proposal.give, mappingReversed),
+  );
 
   // Map to the other contract's keywords
   const paymentsForOtherContract = mapKeywords(payments, keywordMapping);
@@ -474,7 +481,6 @@ export const offerTo = async (
     const amounts = await E(userSeatPromise).getCurrentAllocation();
 
     // Map back to the original contract's keywords
-    const mappingReversed = reverse(keywordMapping);
     const mappedAmounts = mapKeywords(amounts, mappingReversed);
     const mappedPayments = mapKeywords(payoutPayments, mappingReversed);
     await depositToSeat(zcf, toSeat, mappedAmounts, mappedPayments);

@@ -64,22 +64,21 @@
  * @callback OfferTo
  * @param {ContractFacet} zcf
  * @param {ERef<Invitation>} invitation
+ * @param {KeywordKeywordRecord=} keywordMapping
  * @param {Proposal} proposal
  * @param {ZCFSeat} fromSeat
- * @param {AmountKeywordRecord} fromAssets
  * @param {ZCFSeat} toSeat
- * @param {KeywordKeywordRecord=} keywordMapping
  * @returns {OfferToReturns}
  */
 
 /**
  * @callback Reverse
  * @param {KeywordKeywordRecord=} keywordRecord
- * @returns {KeywordKeywordRecord | undefined }
+ * @returns {KeywordKeywordRecord }
  */
 
 /**
  * @callback MapKeywords
- * @param {AmountKeywordRecord | PaymentPKeywordRecord } keywordRecord
- * @param {KeywordKeywordRecord | undefined } keywordMapping
+ * @param {AmountKeywordRecord | PaymentPKeywordRecord | undefined } keywordRecord
+ * @param {KeywordKeywordRecord} keywordMapping
  */

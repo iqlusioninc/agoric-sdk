@@ -17,7 +17,6 @@ export const doLiquidation = async (
 
   const swapInvitation = E(autoswapPublicFacetP).makeSwapInInvitation();
 
-  const fromAmounts = harden({ Collateral: allCollateral });
   const toAmounts = harden({ In: allCollateral });
 
   const proposal = harden({
@@ -33,11 +32,10 @@ export const doLiquidation = async (
   const { userSeatPromise: autoswapUserSeat, deposited } = await offerTo(
     zcf,
     swapInvitation,
+    keywordMapping,
     proposal,
     collateralSeat,
-    fromAmounts,
     lenderSeat,
-    keywordMapping,
   );
 
   const closeSuccessfully = () => {
