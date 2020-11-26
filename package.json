@@ -4,7 +4,9 @@
   "private": true,
   "useWorkspaces": true,
   "workspaces": [
-    "packages/*"
+    "packages/*",
+    "packages/dapp-svelt-wallet/api",
+    "packages/dapp-svelt-wallet/ui"
   ],
   "devDependencies": {
     "@typescript-eslint/parser": "^4.1.0",
